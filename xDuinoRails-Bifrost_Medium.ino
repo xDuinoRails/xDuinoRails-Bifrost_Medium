@@ -1,13 +1,19 @@
 #include <Arduino.h>
 #include <NmraDcc.h>
 
+
+// #define RAILCOM_PIO
+
+#ifdef RAILCOM_PIO
+#include <SerialPIO.h>
+#endif
+
 // This Example shows how to use the library as a DCC Accessory Decoder or a DCC Signalling Decoder
 // It responds to both the normal DCC Turnout Control packets and the newer DCC Signal Aspect packets 
 // You can also print every DCC packet by uncommenting the "#define NOTIFY_DCC_MSG" line below
 
 NmraDcc  Dcc ;
 DCC_MSG  Packet ;
-
 
 /*
 //
@@ -46,6 +52,10 @@ int TurnoutPins[OUTPUT_PAIRS][2] =
   { D9, D8 }   // R-2, L-2
 };
 // */
+
+#ifdef RAILCOM_PIO
+SerialPIO ser1(RAILCOM_PIN, SerialPIO::NOPIN );
+#endif
 
 struct CVPair
 {
@@ -149,20 +159,29 @@ void handleOutputTimeouts() {
 void setup()
 {
   Serial.begin(115200);
+
   uint8_t maxWaitLoops = 255;
   while(!Serial && maxWaitLoops--)
     delay(20);
 
+  // Configure the DCC CV Programing ACK pin for an output
+  pinMode( DCC_ACK_PIN, OUTPUT );
 
+  #ifdef RAILCOM_PIO
+  ser1.begin(250000);
+  #else
+  Serial1.begin(250000);
+  #endif
+
+  // Configure the RailCom speed to 4us
+  
+  // Init the switch off timers
   for(int i = 0; i < OUTPUT_PAIRS; i++) {
     for(int j = 0; j < 2; j++) {
       last_time_switched_on[i][j] = 0;
     }
   }
       
-  // Configure the DCC CV Programing ACK pin for an output
-  pinMode( DCC_ACK_PIN, OUTPUT );
-
   Serial.println("xDuinoRails - Bifröst Medium");
   
   // Setup which External Interrupt, the Pin it's associated with that we're using and enable the Pull-Up
@@ -219,7 +238,18 @@ void loop()
 /*
 void setup1() {}
 void loop1()  {
-  Serial.println("Sleep 200ms");  
-  delay(200);
+  #ifdef RAILCOM_PIO
+  ser1.print("A1");
+//  ser1.write("A1");
+  #else
+  Serial1.print("A1");
+  #endif
+  delay(1);
+  #ifdef RAILCOM_PIO
+  Serial.println("Railcom PioSerial");
+  #else
+  Serial.println("Railcom HardwareSerial");
+  #endif
+  delay(1);
 }
-*/
+// */
